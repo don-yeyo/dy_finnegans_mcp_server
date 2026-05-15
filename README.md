@@ -24,7 +24,7 @@ El archivo de configuración se encuentra generalmente en:
 Para integrar este servidor, añade la siguiente configuración a tu archivo `mcp_config.json`:
 
 ```json
-"finnegans": {
+"finnegans-mcp-server-api-docs": {
   "command": "python",
   "args": ["/RUTA/A/TU/PROYECTO/main.py"],
   "env": {

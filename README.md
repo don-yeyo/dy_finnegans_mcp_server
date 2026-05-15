@@ -24,14 +24,32 @@ El archivo de configuración se encuentra generalmente en:
 Para integrar este servidor, añade la siguiente configuración a tu archivo `mcp_config.json`:
 
 ```json
-"finnegans-mcp-server-api-docs": {
-  "command": "python",
-  "args": ["/RUTA/A/TU/PROYECTO/main.py"],
-  "env": {
-    "PYTHONPATH": "/RUTA/A/TU/PROYECTO"
+{
+  "mcpServers": {
+    "finnegans-mcp-server-api-docs": {
+      "command": "python",
+      "args": ["/RUTA/A/TU/PROYECTO/main.py"],
+      "env": {
+        "PYTHONPATH": "/RUTA/A/TU/PROYECTO"
+      }
+    }
   }
 }
 ```
+
+> [!IMPORTANT]
+> **Reinicio de Antigravity**: Luego de modificar el archivo `mcp_config.json`, es necesario reiniciar Antigravity (o el IDE donde se esté utilizando) para que los cambios surtan efecto, ya que la configuración se carga únicamente al inicio.
+
+## Ejemplos de Uso
+
+Una vez configurado, puedes pedirle a Antigravity que utilice las herramientas del servidor. Por ejemplo:
+
+- **Búsqueda de APIs**:
+  > "Busca APIs relacionadas con 'clientes' usando finnegans-mcp-server-api-docs"
+- **Obtener detalle de una API**:
+  > "Dame el detalle de la API 'facturaVenta' usando finnegans-mcp-server-api-docs"
+- **Consultar documentación específica**:
+  > "¿Cómo puedo crear una factura de venta según la documentación de Finnegans?"
 
 ## Funcionalidades
 

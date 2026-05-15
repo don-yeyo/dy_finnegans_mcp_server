@@ -18,14 +18,17 @@ Este proyecto actúa como un puente (proxy) local para el servidor MCP de Finneg
 
 ## Configuración en el Agente (mcp_config.json)
 
+El archivo de configuración se encuentra generalmente en:
+`%USERPROFILE%\.gemini\antigravity\mcp_config.json` (Windows) o `~/.gemini/antigravity/mcp_config.json` (Linux/macOS).
+
 Para integrar este servidor, añade la siguiente configuración a tu archivo `mcp_config.json`:
 
 ```json
 "finnegans": {
   "command": "python",
-  "args": ["C:/Users/gabrielt/Documents/Finnegans/dy_finnegans_mcp_server/main.py"],
+  "args": ["/RUTA/A/TU/PROYECTO/main.py"],
   "env": {
-    "PYTHONPATH": "C:/Users/gabrielt/Documents/Finnegans/dy_finnegans_mcp_server"
+    "PYTHONPATH": "/RUTA/A/TU/PROYECTO"
   }
 }
 ```

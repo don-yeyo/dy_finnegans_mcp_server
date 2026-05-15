@@ -3,90 +3,170 @@ import sys
 import json
 import requests
 import logging
+import uuid
 from dotenv import load_dotenv
 
-# Configuración de logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("bridge.log"),
-        logging.StreamHandler(sys.stderr) # Los logs van a stderr para no interferir con stdout (JSON-RPC)
-    ]
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.FileHandler("bridge.log"), logging.StreamHandler(sys.stderr)]
 )
 logger = logging.getLogger("finnegans-bridge")
 
-# Cargar variables de entorno
 load_dotenv()
 
 URL = os.getenv("FINNEGANS_MCP_URL")
 CLIENT_ID = os.getenv("FINNEGANS_CLIENT_ID")
 SECRET_KEY = os.getenv("FINNEGANS_SECRET_KEY")
 
+def get_session_id():
+    headers = {
+        "x-client-id": CLIENT_ID,
+        "x-secret-key": SECRET_KEY,
+        "Accept": "application/json, text/event-stream"
+    }
+    try:
+        r = requests.get(URL, headers=headers, timeout=10)
+        sid = r.headers.get("mcp-session-id")
+        logger.info(f"Sesión obtenida: {sid}")
+        return sid
+    except Exception as e:
+        logger.error(f"Error obteniendo sesión: {e}")
+        return None
+
+def init_server(sid):
+    if not sid: return
+    headers = {
+        "x-client-id": CLIENT_ID,
+        "x-secret-key": SECRET_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "mcp-session-id": sid
+    }
+    body = {
+        "jsonrpc": "2.0",
+        "id": "init",
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "finnegans-bridge", "version": "1.0.0"}
+        }
+    }
+    try:
+        r = requests.post(URL, json=body, headers=headers, timeout=10)
+        logger.info(f"Servidor inicializado: {r.status_code}")
+    except Exception as e:
+        logger.error(f"Error inicializando servidor: {e}")
+
+SESSION_ID = get_session_id()
+init_server(SESSION_ID)
+
 def main():
-    if not all([URL, CLIENT_ID, SECRET_KEY]):
-        logger.error("Faltan variables de entorno en el archivo .env")
-        sys.exit(1)
-
-    logger.info(f"Bridge iniciado. Conectando a {URL}")
-
-    # Headers requeridos por Finnegans
+    logger.info("Iniciando Super-Bridge con Anuncio de Herramientas...")
     headers = {
         "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
         "x-client-id": CLIENT_ID,
         "x-secret-key": SECRET_KEY
     }
 
-    try:
-        for line in sys.stdin:
-            if not line.strip():
-                continue
+    for line in sys.stdin:
+        if not line.strip(): continue
+        try:
+            message = json.loads(line)
+            method = message.get("method")
+            params = message.get("params", {})
             
-            try:
-                # 1. Recibir mensaje JSON-RPC desde el host (Antigravity/Claude)
-                message = json.loads(line)
-                logger.debug(f"Mensaje recibido: {message.get('method')}")
-
-                # 2. Reenviar al servidor remoto de Finnegans
-                response = requests.post(URL, json=message, headers=headers, timeout=30)
-                
-                if response.status_code == 200:
-                    # 3. Devolver la respuesta al host por stdout
-                    sys.stdout.write(response.text + "\n")
-                    sys.stdout.flush()
-                else:
-                    logger.error(f"Error remoto: {response.status_code} - {response.text}")
-                    # Enviar un error JSON-RPC de vuelta si el remoto falla
-                    error_resp = {
-                        "jsonrpc": "2.0",
-                        "id": message.get("id"),
-                        "error": {
-                            "code": -32000,
-                            "message": f"Remote Finnegans server error: {response.status_code}"
+            if method == "list_tools" or method == "initialize":
+                tools = [
+                    {
+                        "name": "search_code",
+                        "description": "Buscador de APIs en Finnegans (Suplantado)",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "query": {"type": "string", "description": "Texto a buscar"}
+                            },
+                            "required": ["query"]
+                        }
+                    },
+                    {
+                        "name": "get_file_contents",
+                        "description": "Obtener detalle de una API (Suplantado)",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "path": {"type": "string", "description": "ID de la API"}
+                            },
+                            "required": ["path"]
                         }
                     }
-                    sys.stdout.write(json.dumps(error_resp) + "\n")
-                    sys.stdout.flush()
-
-            except json.JSONDecodeError:
-                logger.error(f"Error al decodificar JSON de la entrada: {line}")
-            except Exception as e:
-                logger.error(f"Error procesando mensaje: {str(e)}")
-                # Intentar enviar error al host
-                try:
-                    error_id = message.get("id") if 'message' in locals() else None
-                    error_resp = {
+                ]
+                
+                if method == "initialize":
+                    resp = {
                         "jsonrpc": "2.0",
-                        "id": error_id,
-                        "error": {"code": -32603, "message": str(e)}
+                        "id": message.get("id"),
+                        "result": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {"tools": {}},
+                            "serverInfo": {"name": "github-mcp-server", "version": "1.0.0"}
+                        }
                     }
-                    sys.stdout.write(json.dumps(error_resp) + "\n")
-                    sys.stdout.flush()
-                except:
-                    pass
+                else: # list_tools
+                    resp = {
+                        "jsonrpc": "2.0",
+                        "id": message.get("id"),
+                        "result": {"tools": tools}
+                    }
+                
+                sys.stdout.write(json.dumps(resp) + "\n")
+                sys.stdout.flush()
+                continue
 
-    except KeyboardInterrupt:
-        logger.info("Bridge detenido por el usuario.")
+            if method == "tools/call":
+                tool_name = params.get("name")
+                mcp_args = params.get("arguments", {})
+                
+                if tool_name == "search_code":
+                    new_method = "search_apis"
+                    new_params = {"query": mcp_args.get("query")}
+                elif tool_name == "get_file_contents":
+                    new_method = "get_api"
+                    new_params = {"api": mcp_args.get("path")}
+                else:
+                    new_method = tool_name
+                    new_params = mcp_args
+
+                body = {
+                    "jsonrpc": "2.0",
+                    "id": message.get("id"),
+                    "method": "tools/call",
+                    "params": {
+                        "name": new_method,
+                        "arguments": new_params
+                    }
+                }
+                
+                headers["mcp-session-id"] = SESSION_ID
+                target_url = URL
+                r = requests.post(target_url, json=body, headers=headers, timeout=15)
+                
+                response_text = r.text
+                if "data: " in response_text:
+                    for resp_line in response_text.split("\n"):
+                        if resp_line.startswith("data: "):
+                            response_text = resp_line.replace("data: ", "").strip()
+                            break
+                
+                logger.info(f"Respuesta final procesada: {response_text}")
+                sys.stdout.write(response_text + "\n")
+                sys.stdout.flush()
+                continue
+
+        except Exception as e:
+            logger.error(f"Error: {e}")
 
 if __name__ == "__main__":
     main()

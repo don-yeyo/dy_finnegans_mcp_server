@@ -15,7 +15,10 @@ Este proyecto actúa como un puente (proxy) local para el servidor MCP de Finneg
    pip install requests python-dotenv
    ```
 3. Configura tus credenciales en el archivo `.env` (usa `.env.template` como base).
-   - **Obtención de credenciales**: Ingresa a la consola de administración de Finnegans (o el portal de desarrolladores de Finnegans GO), crea una nueva aplicación en la sección de integraciones/API y obtén el **Client ID** y el **Client Secret** (Secret Key). Asegúrate de que la aplicación tenga los permisos necesarios para acceder a la documentación de la API.
+   - **Obtención de credenciales**: 
+     1. Desde el menú de **Finnegans Go**, accede a **Modificar perfil**.
+     2. En la pestaña **Datos personales**, al final del formulario, encontrarás y podrás copiar tu **Client ID** (x-client-id) y **Secret Key** (x-secret-key).
+     *Nota: Estas credenciales son personales y están vinculadas a tu usuario de GO.*
 
 
 ## Configuración en el Agente (mcp_config.json)
